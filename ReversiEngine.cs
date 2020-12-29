@@ -11,8 +11,12 @@ namespace Reversi
         public int FieldWidth { get; private set; }
         public int FieldHeight { get; private set; }
         public int NextMovePlayerNumber { get; private set; } = 1;
+        public int CountOfEmptyField { get { return takenField[0]; } }
+        public int CountOfPlayerOneField { get { return takenField[1]; } }
+        public int CountOfPlayerTwoField { get { return takenField[2]; } }
 
         private int[,] field;
+        private int[] takenField = new int[3];
 
         public ReversiEngine(int PlayerStartNumber, int fieldWidth = 8, int fieldHeight = 8)
         {
@@ -24,6 +28,7 @@ namespace Reversi
             field = new int[FieldWidth, FieldHeight];
 
             PrepareField();
+            CountTakenField();
             NextMovePlayerNumber = PlayerStartNumber;
         }
 
@@ -39,6 +44,15 @@ namespace Reversi
             var heightMiddle = FieldHeight / 2;
             field[widthMiddle - 1, heightMiddle - 1] = field[widthMiddle, heightMiddle] = 1;
             field[widthMiddle - 1, heightMiddle] = field[widthMiddle, heightMiddle - 1] = 2;
+        }
+
+        private void CountTakenField()
+        {
+            for (int i = 0; i < takenField.Length; i++) takenField[i] = 0;
+
+            for (int i = 0; i < FieldWidth; i++)
+                for (int j = 0; j < FieldHeight; j++)
+                    takenField[field[i, j]]++;
         }
 
         private void ChangeActualPlayer()
@@ -62,6 +76,11 @@ namespace Reversi
             if (!IsFieldCoordinatesCorrect(horiz, vert))
                 throw new Exception("Nieprawidłowe współrzędne pola");
             return field[horiz, vert];
+        }
+
+        public bool PutStone(int horiz, int vert)
+        {
+            return PutStone(horiz, vert, false) > 0;
         }
 
         protected int PutStone(int horiz, int vert, bool test)
@@ -120,6 +139,7 @@ namespace Reversi
 
             if (ReversedFieldCount > 0 && !test)
                 ChangeActualPlayer();
+            CountTakenField();
 
             return ReversedFieldCount;
         }

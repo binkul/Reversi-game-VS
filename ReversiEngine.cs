@@ -85,7 +85,7 @@ namespace Reversi
 
         protected int PutStone(int horiz, int vert, bool test)
         {
-            if (IsFieldCoordinatesCorrect(horiz, vert))
+            if (!IsFieldCoordinatesCorrect(horiz, vert))
                 throw new Exception("Nieprawidłowe współrzędne pola");
 
             if (field[horiz, vert] != 0) return -1;

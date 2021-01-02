@@ -8,6 +8,13 @@ namespace Reversi
 {
     public class ReversiEngine
     {
+        public enum FieldSituation
+        {
+            MoveIsPossible,
+            ActualPlayerCantMove,
+            BothPlayerCantMove,
+            AllPointOfFieldAreTaken
+        }
         public int FieldWidth { get; private set; }
         public int FieldHeight { get; private set; }
         public int NextMovePlayerNumber { get; private set; } = 1;
@@ -17,6 +24,16 @@ namespace Reversi
 
         private int[,] field;
         private int[] takenField = new int[3];
+        public int PlayerNumberWithAdventage
+        {
+            get
+            {
+                if (CountOfPlayerOneField == CountOfPlayerTwoField) return 0;
+                else
+                    return (CountOfPlayerOneField > CountOfPlayerTwoField) ? 1 : 2;
+            }
+        }
+
 
         public ReversiEngine(int PlayerStartNumber, int fieldWidth = 8, int fieldHeight = 8)
         {
@@ -142,6 +159,46 @@ namespace Reversi
             CountTakenField();
 
             return ReversedFieldCount;
+        }
+        private bool IsMovePossibleForPlayer()
+        {
+            int fieldCount = 0;
+            for (var i = 0; i < FieldWidth; i++)
+            {
+                for (var j = 0; j < FieldHeight; j++)
+                {
+                    if (field[i, j] == 0 && PutStone(i, j, true) > 0)
+                        fieldCount++;
+                }
+            }
+
+            return fieldCount > 0;
+        }
+
+        public void Pass()
+        {
+            if (IsMovePossibleForPlayer())
+                throw new Exception("Gracz nie może oddać ruchu, jeżeli wykonanie ruchu jest możliwe");
+            ChangeActualPlayer();
+        }
+
+        public FieldSituation CheckFieldSituation()
+        {
+            if (CountOfEmptyField == 0) return FieldSituation.AllPointOfFieldAreTaken;
+
+            bool movePossible = IsMovePossibleForPlayer();
+            if (movePossible)
+                return FieldSituation.MoveIsPossible;
+            else
+            {
+                ChangeActualPlayer();
+                bool moveEnenmyPossible = IsMovePossibleForPlayer();
+                ChangeActualPlayer();
+                if (IsMovePossibleForPlayer())
+                    return FieldSituation.ActualPlayerCantMove;
+                else
+                    return FieldSituation.BothPlayerCantMove;
+            }
         }
     }
 }

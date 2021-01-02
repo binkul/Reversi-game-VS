@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 
 namespace Reversi
 {
@@ -20,10 +21,12 @@ namespace Reversi
     /// </summary>
     public partial class MainWindow : Window
     {
-        private ReversiEngine engine = new ReversiEngineAI(1);
+        private bool gameAgainstComputer = true;
+        private ReversiEngineAI engine = new ReversiEngineAI(1);
         private SolidColorBrush[] colors = { Brushes.Ivory, Brushes.Green, Brushes.Sienna };
         string[] playerName = { "", "green", "brown" };
         private Button[,] field;
+        private DispatcherTimer timer;
         private bool IsFieldInitialized
         {
             get
@@ -101,10 +104,10 @@ namespace Reversi
                 switch(playerNumber)
                 {
                     case 1:
-                        moveGreenList.Items.Add(fieldSymbol(clickHoriz, clickVert));
+                        moveGreenList.Items.Add(FieldSymbol(clickHoriz, clickVert));
                         break;
                     case 2:
-                        moveBrownList.Items.Add(fieldSymbol(clickHoriz, clickVert));
+                        moveBrownList.Items.Add(FieldSymbol(clickHoriz, clickVert));
                         break;
 
                 }
@@ -132,7 +135,7 @@ namespace Reversi
 
             if (gameOver)
             {
-                int winner = engine.NextMovePlayerNumber;
+                int winner = engine.PlayerNumberWithAdventage;
                 if (winner != 0)
                     MessageBox.Show("Wygrał gracz " + playerName[winner], Title, MessageBoxButton.OK, MessageBoxImage.Information);
                 else
@@ -149,6 +152,19 @@ namespace Reversi
                     colorPlayerButton.IsEnabled = false;
                 }
             }
+            else
+            {
+                if (gameAgainstComputer && engine.NextMovePlayerNumber == 2)
+                {
+                    if (timer == null)
+                    {
+                        timer = new DispatcherTimer();
+                        timer.Interval = new TimeSpan(0, 0, 0, 0, 300);
+                        timer.Tick += (_sender, _e) => { timer.IsEnabled = false; DoBestMove(); };
+                    }
+                    timer.Start();
+                }
+            }
         }
 
         private void PrepareNewGame(int PlayerStartNumber, int fieldWidth = 8, int fieldHeight = 8)
@@ -161,11 +177,61 @@ namespace Reversi
             colorPlayerButton.IsEnabled = true;
         }
 
-        private static string fieldSymbol(int horiz, int vert)
+        private static string FieldSymbol(int horiz, int vert)
         {
             if (horiz > 25 || vert > 8) return "(" + horiz.ToString() + "," + vert.ToString() + ")";
             return "" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[horiz] + "123456789"[vert];
         }
 
+        private FieldCoordinate? SetBestMove()
+        {
+            if (!fieldGrid.IsEnabled) return null;
+
+            if (engine.CountOfEmptyField == 0)
+            {
+                MessageBox.Show("Nie ma wolnych pól na planszy", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                return null;
+            }
+
+            try
+            {
+                int horiz, vert;
+                engine.ProposeBestMove(out horiz, out vert);
+                return new FieldCoordinate { Horiz = horiz, Vert = vert };
+            }
+            catch
+            {
+                MessageBox.Show("Bieżący gracz nie może wykonac ruchu", Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                return null;
+            }
+        }
+    
+        private void SelectBestMove()
+        {
+            FieldCoordinate? fieldCoordinate = SetBestMove();
+            if (fieldCoordinate.HasValue)
+            {
+                SolidColorBrush colorPrompt = colors[engine.NextMovePlayerNumber].Lerp(colors[0], 0.5f);
+                field[fieldCoordinate.Value.Horiz, fieldCoordinate.Value.Vert].Background = colorPrompt;
+            }
+        }
+
+        private void ColorPlayerButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+                DoBestMove();
+            else
+                SelectBestMove();
+        }
+    
+        private void DoBestMove()
+        {
+            FieldCoordinate? fieldCoordinate = SetBestMove();
+            if (fieldCoordinate.HasValue)
+            {
+                Button button = field[fieldCoordinate.Value.Horiz, fieldCoordinate.Value.Vert];
+                Button_Click(button, null);
+            }
+        }
     }
 }

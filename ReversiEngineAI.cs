@@ -93,5 +93,6 @@ namespace Reversi
                 throw new Exception("Brak mozliwych ruchów");
 
         }
+   
     }
 }
